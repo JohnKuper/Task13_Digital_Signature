@@ -7,7 +7,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.Key;
-import java.security.KeyPair;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -26,7 +25,7 @@ import org.slf4j.LoggerFactory;
 /**
  * 
  * @author Дмитрий Коробейников
- * @version 1.0.0 Creates digital signature and saves it to file.
+ * @version 1.1 Creates digital signature and saves it to file.
  */
 public class SignatureHelper {
 
@@ -53,22 +52,20 @@ public class SignatureHelper {
 			logger.error("NoSuchAlgorithmException: ", ex);
 		}
 	}
-	
-	public void initKeys(FileInputStream keyStore) {
-		
-	}
 
-	public KeyPair getKeyPair(FileInputStream in, String alias,
-			char[] passKeyStore, char[] passAlias) {
+	public void initKeys(String storePath, String alias, char[] passKeyStore,
+			char[] passAlias) {
+		FileInputStream in = null;
 		try {
+			in = new FileInputStream(storePath);
 			KeyStore ks = KeyStore.getInstance("JKS");
 			ks.load(in, passKeyStore);
 			Key key = ks.getKey(alias, passAlias);
 			if (key instanceof PrivateKey) {
-				// Get certificate of public key
 				Certificate cert = ks.getCertificate(alias);
-				PublicKey publicKey = cert.getPublicKey();
-				return new KeyPair(publicKey, (PrivateKey) key);
+				this.privateKey = (PrivateKey) key;
+				this.publicKey = cert.getPublicKey();
+				in.close();
 			}
 		} catch (KeyStoreException ex) {
 			logger.error("KeyStoreException: ", ex);
@@ -80,18 +77,31 @@ public class SignatureHelper {
 			logger.error("NoSuchAlgorithmException: ", ex);
 		} catch (UnrecoverableEntryException ex) {
 			logger.error("UnrecoverableEntryException: ", ex);
+		} finally {
+			if (in != null) {
+				try {
+					in.close();
+				} catch (IOException ex) {
+					logger.error(
+							"IOException during 'initKeys' while closing FileInputStream: ",
+							ex);
+				}
+			}
 		}
-		return null;
 	}
 
-	public void generateDigitalSignature(FileInputStream srcFile,
-			FileOutputStream signatureFile, PrivateKey privateKey) {
+	public void generateDigitalSignature(String srcFilePath,
+			String signatureFilePath) {
 
+		FileInputStream srcFile = null;
+		FileOutputStream signatureFile = null;
+		BufferedInputStream bufin = null;
 		try {
-
+			srcFile = new FileInputStream(srcFilePath);
+			signatureFile = new FileOutputStream(signatureFilePath);
 			signature.initSign(privateKey);
 
-			BufferedInputStream bufin = new BufferedInputStream(srcFile);
+			bufin = new BufferedInputStream(srcFile);
 			byte[] buffer = new byte[1024];
 			int len;
 			while (bufin.available() != 0) {
@@ -101,6 +111,7 @@ public class SignatureHelper {
 			;
 
 			bufin.close();
+			srcFile.close();
 
 			byte[] realSig = signature.sign();
 			signatureFile.write(realSig);
@@ -112,35 +123,55 @@ public class SignatureHelper {
 			logger.error("IOException: ", ex);
 		} catch (SignatureException ex) {
 			logger.error("SinatureException: ", ex);
+		} finally {
+			try {
+				if (srcFile != null) {
+					srcFile.close();
+				}
+				if (signatureFile != null) {
+					signatureFile.close();
+				}
+				if (bufin != null) {
+					bufin.close();
+				}
+			} catch (IOException ex) {
+				logger.error(
+						"IOException during 'generateDigitalSignature' while closing streams: ",
+						ex);
+			}
 		}
 
 	}
 
-	public boolean isVerify(FileInputStream srcFile,
-			FileInputStream signatureFile, PublicKey publicKey) {
+	public boolean isVerify(String srcFilePath, String signatureFilePath) {
 
-		if ((srcFile == null) || (signatureFile == null)) {
-			throw new NullPointerException();
-		}
 		boolean result = false;
+		FileInputStream srcFile = null;
+		FileInputStream signatureFile = null;
+		BufferedInputStream bufReadMsg = null;
+		BufferedInputStream bufReadSgn = null;
+
 		try {
+			srcFile = new FileInputStream(srcFilePath);
+			signatureFile = new FileInputStream(signatureFilePath);
 			// Reading source file
-			BufferedInputStream bufReadMsg = new BufferedInputStream(srcFile);
+			bufReadMsg = new BufferedInputStream(srcFile);
 			byte[] byteMsg = new byte[bufReadMsg.available()];
 			bufReadMsg.read(byteMsg);
 
 			// Reading signature file
-			BufferedInputStream bufReadSgn = new BufferedInputStream(
-					signatureFile);
+			bufReadSgn = new BufferedInputStream(signatureFile);
 			byte[] byteSgn = new byte[bufReadSgn.available()];
 			bufReadSgn.read(byteSgn);
 
-			// Verifying message
+			// Verifying the file
 			signature.initVerify(publicKey);
 			signature.update(byteMsg);
 
 			bufReadMsg.close();
 			bufReadSgn.close();
+			srcFile.close();
+			signatureFile.close();
 
 			result = signature.verify(byteSgn);
 
@@ -152,6 +183,26 @@ public class SignatureHelper {
 			logger.error("IOException: ", ex);
 		} catch (SignatureException ex) {
 			logger.error("SignatureException: ", ex);
+		} finally {
+			try {
+				if (bufReadMsg != null) {
+					bufReadMsg.close();
+				}
+				if (bufReadSgn != null) {
+					bufReadSgn.close();
+				}
+				if (srcFile != null) {
+					srcFile.close();
+				}
+				if (signatureFile != null) {
+					signatureFile.close();
+				}
+
+			} catch (IOException ex) {
+				logger.error(
+						"IOException during 'isVerify' while closing streams: ",
+						ex);
+			}
 		}
 		return result;
 	}
