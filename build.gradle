@@ -1,0 +1,80 @@
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'application'
+apply plugin: 'signing'
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
+version = '1.3'
+
+mainClassName = "com.johnkuper.epam.main.Launcher"
+File storeFile = file('src/main/resources/task13.jks')
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+	compile 'ch.qos.logback:logback-classic:1.1.2'
+}
+
+sourceSets {
+	main {
+		java {
+			srcDir 'src/main/java'
+		}
+		resources {
+			srcDir 'src/main/resources'
+		}
+	}
+}
+
+task copyToLib( type: Copy ) {
+	into "$buildDir/libs/lib"
+	from configurations.runtime
+}
+
+task signJar << { 
+    description = "Signs JAR"
+	
+	new File('build/libs/signed').mkdirs();
+    ant.signjar(destDir: 'build/libs/signed/',
+				jar: "build/libs/Task13_KeyTool_KeyGen-1.3.jar",
+                alias: "johnkuper",
+                keystore: storeFile,
+                storepass: "task13store",
+                keypass: "task13key",
+				preservelastmodified:"false")
+	}
+
+build.dependsOn "signJar"
+
+jar { dependsOn copyToLib
+    manifest {
+        attributes 'Main-Class': mainClassName
+        def manifestCp = configurations.runtime.files.collect  {
+        File file = it
+        "lib/${file.name}"
+        }.join(' ')
+
+
+         configurations.runtime.getAllDependencies().withType(ProjectDependency).each {dep->
+
+            def depProj = dep.getDependencyProject()
+            def libFilePaths = project(depProj.path).libsDir.list().collect{ inFile-> "lib/${inFile}"  }.join(' ')
+            logger.info"Adding libs from project ${depProj.name}: [- ${libFilePaths} -]"
+            manifestCp += ' '+libFilePaths
+        }
+
+        logger.lifecycle("")
+        logger.lifecycle("---Manifest-Class-Path: ${manifestCp}")
+        attributes 'Class-Path': manifestCp
+
+    }
+	
+}
+
+
+
+

@@ -4,7 +4,7 @@
 	<groupId>com.johnkuper.epam</groupId>
 	<artifactId>Task13_KeyTool_KeyGen</artifactId>
 	<version>1</version>
-	<description>Generate pair of keys with keytool</description>
+	<description>Generate digital signature</description>
 
 	<dependencies>
 		<dependency>
