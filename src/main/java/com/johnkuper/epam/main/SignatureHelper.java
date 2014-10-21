@@ -2,7 +2,6 @@ package com.johnkuper.epam.main;
 
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.InvalidKeyException;
@@ -24,7 +23,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * 
- * @author Дмитрий Коробейников
+ * @author Dmitriy Korobeynikov
  * @version 1.1 Creates digital signature and saves it to file.
  */
 public class SignatureHelper {
@@ -46,10 +45,8 @@ public class SignatureHelper {
 					signature = Signature.getInstance(signAlg, provName);
 				}
 			}
-		} catch (NoSuchProviderException ex) {
-			logger.error("NoSuchProviderException: ", ex);
-		} catch (NoSuchAlgorithmException ex) {
-			logger.error("NoSuchAlgorithmException: ", ex);
+		} catch (NoSuchProviderException | NoSuchAlgorithmException ex) {
+			logger.error("Error during SignatureHelper constructor: ", ex);
 		}
 	}
 
@@ -67,16 +64,10 @@ public class SignatureHelper {
 				this.publicKey = cert.getPublicKey();
 				in.close();
 			}
-		} catch (KeyStoreException ex) {
-			logger.error("KeyStoreException: ", ex);
-		} catch (IOException ex) {
-			logger.error("IOException: ", ex);
-		} catch (CertificateException ex) {
-			logger.error("CertificateException: ", ex);
-		} catch (NoSuchAlgorithmException ex) {
-			logger.error("NoSuchAlgorithmException: ", ex);
-		} catch (UnrecoverableEntryException ex) {
-			logger.error("UnrecoverableEntryException: ", ex);
+		} catch (KeyStoreException | IOException | CertificateException
+				| NoSuchAlgorithmException | UnrecoverableEntryException ex) {
+			logger.error("Error during initKeys: ", ex);
+
 		} finally {
 			if (in != null) {
 				try {
@@ -90,15 +81,14 @@ public class SignatureHelper {
 		}
 	}
 
-	public void generateDigitalSignature(String srcFilePath,
-			String signatureFilePath) {
+	public void generateDigitalSignature(String srcFilePath) {
 
 		FileInputStream srcFile = null;
 		FileOutputStream signatureFile = null;
 		BufferedInputStream bufin = null;
 		try {
 			srcFile = new FileInputStream(srcFilePath);
-			signatureFile = new FileOutputStream(signatureFilePath);
+			signatureFile = new FileOutputStream(srcFilePath + ".signature");
 			signature.initSign(privateKey);
 
 			bufin = new BufferedInputStream(srcFile);
@@ -117,12 +107,8 @@ public class SignatureHelper {
 			signatureFile.write(realSig);
 			signatureFile.close();
 
-		} catch (InvalidKeyException ex) {
-			logger.error("InvalidKeyException: ", ex);
-		} catch (IOException ex) {
-			logger.error("IOException: ", ex);
-		} catch (SignatureException ex) {
-			logger.error("SinatureException: ", ex);
+		} catch (InvalidKeyException | IOException | SignatureException ex) {
+			logger.error("Error during generateDigitalSignature: ", ex);
 		} finally {
 			try {
 				if (srcFile != null) {
@@ -143,7 +129,20 @@ public class SignatureHelper {
 
 	}
 
-	public boolean isVerify(String srcFilePath, String signatureFilePath) {
+	public void savePublicKeyInFile(String filePath) {
+		try {
+
+			byte[] key = publicKey.getEncoded();
+			FileOutputStream keyfos = new FileOutputStream(filePath);
+			keyfos.write(key);
+			keyfos.close();
+
+		} catch (IOException ex) {
+			logger.error("Error during savePublicKeyInFile: ", ex);
+		}
+	}
+
+	public boolean isFileCorrect(String srcFilePath, String signatureFilePath) {
 
 		boolean result = false;
 		FileInputStream srcFile = null;
@@ -175,14 +174,9 @@ public class SignatureHelper {
 
 			result = signature.verify(byteSgn);
 
-		} catch (InvalidKeyException ex) {
-			logger.error("InvalidKeyException: ", ex);
-		} catch (FileNotFoundException ex) {
-			logger.error("FileNotFoundException: ", ex);
-		} catch (IOException ex) {
-			logger.error("IOException: ", ex);
-		} catch (SignatureException ex) {
-			logger.error("SignatureException: ", ex);
+		} catch (InvalidKeyException | IOException | SignatureException ex) {
+			logger.error("Error during isVerify: ", ex);
+
 		} finally {
 			try {
 				if (bufReadMsg != null) {

@@ -8,8 +8,10 @@ public class Launcher {
 	final static Logger logger = LoggerFactory.getLogger("JohnKuper");
 	private static final String KEYSTORE_FILE_PATH = "src/main/resources/task13.jks";
 	private static final String SOURCE_FILE_PATH = "src/main/resources/Car.java";
+	private static final String SIGNATURE_FILE_PATH = SOURCE_FILE_PATH
+			+ ".signature";
+	private static final String PUBLIC_KEY_PATH = "src/main/resources/task13.pk";
 	private static final String FAKE_FILE_PATH = "src/main/resources/CarFake.java";
-	private static final String SIGNATURE_FILE_PATH = "src/main/resources/signature";
 
 	public static void main(String[] args) {
 		generateAndTestSignature();
@@ -23,8 +25,8 @@ public class Launcher {
 		char[] keyPass = "task13key".toCharArray();
 		sigHelper.initKeys(KEYSTORE_FILE_PATH, keyAlias, storePass, keyPass);
 
-		sigHelper.generateDigitalSignature(SOURCE_FILE_PATH,
-				SIGNATURE_FILE_PATH);
+		sigHelper.generateDigitalSignature(SOURCE_FILE_PATH);
+		sigHelper.savePublicKeyInFile(PUBLIC_KEY_PATH);
 
 		verifyFiles(sigHelper);
 
@@ -35,7 +37,7 @@ public class Launcher {
 		String[] paths = { SOURCE_FILE_PATH, FAKE_FILE_PATH };
 		int i;
 		for (i = 0; i < paths.length; i++) {
-			boolean isFileVerify = sigHelper.isVerify(paths[i],
+			boolean isFileVerify = sigHelper.isFileCorrect(paths[i],
 					SIGNATURE_FILE_PATH);
 			if (isFileVerify) {
 				logger.debug("File {} verification was successful", paths[i]);

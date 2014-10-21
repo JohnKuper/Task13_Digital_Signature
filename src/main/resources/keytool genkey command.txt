@@ -1,1 +1,1 @@
-keytool -genkey -keystore task13.jks -dname "CN=Dmitriy Korobeynikov, OU=students, O=epam-system, L=Izhevsk, ST=Udmurt Republic, C=RU" -storepass task13store -alias johnkuper -keypass task13key
+keytool -genkey -keystore task13.jks -dname "CN=Dmitriy Korobeynikov, OU=students, O=epam-system, L=Izhevsk, ST=Udmurt Republic, C=RU" -storepass task13store -alias johnkuper -keypass task13key -validity 999 -keysize 512

@@ -1,0 +1,1 @@
+jarsigner -keystore task13.jks -storepass task13store -keypass task13key -sigfile SIG -signedjar SignedGradle-1.3.jar backup/Gradle-1.3.jar johnkuper
